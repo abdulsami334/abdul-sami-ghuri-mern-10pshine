@@ -22,7 +22,7 @@ export const createUser = (name, email, password) => {
  */
 export const findUserByEmail = (email) => {
   return new Promise((resolve, reject) => {
-    const query = "SELECT * FROM users WHERE email = ?";
+    const query = "SELECT * FROM users WHERE email = ?";[email]
 
     db.query(query, [email], (err, result) => {
       if (err) {
