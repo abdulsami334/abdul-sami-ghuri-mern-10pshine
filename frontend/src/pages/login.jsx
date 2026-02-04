@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { loginUser } from "../api/auth";
 import { useNavigate, Link } from "react-router-dom";
-import noteraLogo from "../assets/noteralogo.png"; // ADD THIS IMPORT
+import noteraLogo from "../assets/noteralogo.svg"; // ADD THIS IMPORT
 
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -16,8 +16,11 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await loginUser(form);
-      navigate("/dashboard");
+        const res = await loginUser(form);
+      
+        localStorage.setItem("token", res.data.token);
+                console.log("token", res.data.token);
+      navigate("/");
     } catch (error) {
       console.error("Login failed:", error);
     } finally {
@@ -106,7 +109,7 @@ export default function Login() {
                 name="email"
                 value={form.email}
                 onChange={handleChange}
-                placeholder="ali@example.com"
+                placeholder="abc@example.com"
                 required
                 className="w-full px-3 sm:px-4 py-2 sm:py-2.5 lg:py-3 text-xs sm:text-sm lg:text-base border-2 border-slate-200 rounded-lg sm:rounded-xl bg-slate-50 transition-all duration-300 focus:outline-none focus:border-blue-500 focus:bg-white focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] focus:-translate-y-0.5 placeholder:text-slate-400"
               />

@@ -3,47 +3,43 @@ import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import NoteCard from "../components/NoteCard";
 import IntroScreen from "../components/IntroScreen";
-import { getNotes, deleteNote } from "../api/notes";
+import { getNotes, deleteNote, pinNote, unpinNote } from "../api/notes";
 
 export default function Dashboard() {
   const [notes, setNotes] = useState([]);
   const [search, setSearch] = useState("");
   const [showIntro, setShowIntro] = useState(false);
-  const [pinnedNotes, setPinnedNotes] = useState([]);
   const [userName, setUserName] = useState("");
-  const [view, setView] = useState("grid"); // grid or list
+  const [view, setView] = useState("grid");
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Get user name from localStorage
     const savedName = localStorage.getItem("userName");
     if (savedName) {
       setUserName(savedName);
     } else {
-      setUserName("User"); // Default name
+      setUserName("User");
     }
 
-    // Check if first time user (intro screen)
     const hasVisited = localStorage.getItem("hasVisited");
     if (!hasVisited && !savedName) {
       setShowIntro(true);
+      setLoading(false);
+    } else {
+      load();
     }
-    
-    // Load pinned notes
-    const savedPinned = localStorage.getItem("pinnedNotes");
-    if (savedPinned) {
-      setPinnedNotes(JSON.parse(savedPinned));
-    }
-    
-    load();
   }, []);
 
   const load = async () => {
+    setLoading(true);
     try {
       const res = await getNotes();
       setNotes(res.data);
     } catch (error) {
       console.error("Error loading notes:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -52,24 +48,27 @@ export default function Dashboard() {
     localStorage.setItem("userName", name);
     localStorage.setItem("hasVisited", "true");
     setShowIntro(false);
+    load();
   };
 
-  const togglePin = (noteId) => {
-    let newPinned;
-    if (pinnedNotes.includes(noteId)) {
-      newPinned = pinnedNotes.filter(id => id !== noteId);
-    } else {
-      newPinned = [...pinnedNotes, noteId];
+  const togglePin = async (noteId) => {
+    try {
+      const note = notes.find(n => n.id === noteId);
+      if (note.is_pinned) {
+        await unpinNote(noteId);
+      } else {
+        await pinNote(noteId);
+      }
+      load();
+    } catch (error) {
+      console.error("Error toggling pin:", error);
     }
-    setPinnedNotes(newPinned);
-    localStorage.setItem("pinnedNotes", JSON.stringify(newPinned));
   };
 
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this note?")) {
       try {
         await deleteNote(id);
-        setPinnedNotes(pinnedNotes.filter(noteId => noteId !== id));
         load();
       } catch (error) {
         console.error("Error deleting note:", error);
@@ -83,11 +82,22 @@ export default function Dashboard() {
       n.content?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const pinned = filtered.filter(n => pinnedNotes.includes(n.id));
-  const unpinned = filtered.filter(n => !pinnedNotes.includes(n.id));
+  const pinned = filtered.filter(n => n.is_pinned);
+  const unpinned = filtered.filter(n => !n.is_pinned);
 
   if (showIntro) {
     return <IntroScreen onComplete={handleIntroComplete} />;
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your notes...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -244,33 +254,15 @@ export default function Dashboard() {
 
       <style>{`
         @keyframes fade-in {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
-
         @keyframes slide-up {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-
-        .animate-fade-in {
-          animation: fade-in 0.5s ease-out;
-        }
-
-        .animate-slide-up {
-          animation: slide-up 0.6s ease-out;
-          animation-fill-mode: both;
-        }
+        .animate-fade-in { animation: fade-in 0.5s ease-out; }
+        .animate-slide-up { animation: slide-up 0.6s ease-out; animation-fill-mode: both; }
       `}</style>
     </div>
   );

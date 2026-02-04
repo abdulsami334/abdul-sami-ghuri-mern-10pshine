@@ -1,10 +1,10 @@
 import { db } from "../config/db.js";
 
-// Create note
+/* ---------------- CREATE ---------------- */
 export const createNoteModel = (userId, title, content) => {
   return new Promise((resolve, reject) => {
     const q =
-      "INSERT INTO notes (user_id, title, content) VALUES (?, ?, ?)";
+      "INSERT INTO notes (user_id, title, content, is_pinned) VALUES (?, ?, ?, false)";
     db.query(q, [userId, title, content], (err, result) => {
       if (err) reject(err);
       else resolve(result);
@@ -12,10 +12,11 @@ export const createNoteModel = (userId, title, content) => {
   });
 };
 
-// Get all notes of user
+/* ---------------- READ ALL (PIN FIRST) ---------------- */
 export const getNotesModel = (userId) => {
   return new Promise((resolve, reject) => {
-    const q = "SELECT * FROM notes WHERE user_id = ?";
+    const q =
+      "SELECT * FROM notes WHERE user_id = ? ORDER BY is_pinned DESC, created_at DESC";
     db.query(q, [userId], (err, result) => {
       if (err) reject(err);
       else resolve(result);
@@ -23,7 +24,7 @@ export const getNotesModel = (userId) => {
   });
 };
 
-// Get single note
+/* ---------------- READ ONE ---------------- */
 export const getNoteByIdModel = (noteId, userId) => {
   return new Promise((resolve, reject) => {
     const q =
@@ -35,7 +36,7 @@ export const getNoteByIdModel = (noteId, userId) => {
   });
 };
 
-// Update note
+/* ---------------- UPDATE ---------------- */
 export const updateNoteModel = (noteId, userId, title, content) => {
   return new Promise((resolve, reject) => {
     const q =
@@ -47,11 +48,34 @@ export const updateNoteModel = (noteId, userId, title, content) => {
   });
 };
 
-// Delete note
+/* ---------------- DELETE ---------------- */
 export const deleteNoteModel = (noteId, userId) => {
   return new Promise((resolve, reject) => {
     const q =
       "DELETE FROM notes WHERE id = ? AND user_id = ?";
+    db.query(q, [noteId, userId], (err, result) => {
+      if (err) reject(err);
+      else resolve(result);
+    });
+  });
+};
+
+/* ---------------- PIN / UNPIN ---------------- */
+export const pinNoteModel = (noteId, userId) => {
+  return new Promise((resolve, reject) => {
+    const q =
+      "UPDATE notes SET is_pinned = true WHERE id = ? AND user_id = ?";
+    db.query(q, [noteId, userId], (err, result) => {
+      if (err) reject(err);
+      else resolve(result);
+    });
+  });
+};
+
+export const unpinNoteModel = (noteId, userId) => {
+  return new Promise((resolve, reject) => {
+    const q =
+      "UPDATE notes SET is_pinned = false WHERE id = ? AND user_id = ?";
     db.query(q, [noteId, userId], (err, result) => {
       if (err) reject(err);
       else resolve(result);
