@@ -3,47 +3,81 @@ import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import NoteCard from "../components/NoteCard";
 import IntroScreen from "../components/IntroScreen";
-import { getNotes, deleteNote } from "../api/notes";
+import { getNotes, deleteNote, pinNote, unpinNote } from "../api/notes";
 
 export default function Dashboard() {
   const [notes, setNotes] = useState([]);
   const [search, setSearch] = useState("");
   const [showIntro, setShowIntro] = useState(false);
-  const [pinnedNotes, setPinnedNotes] = useState([]);
   const [userName, setUserName] = useState("");
-  const [view, setView] = useState("grid"); // grid or list
+  const [view, setView] = useState("grid");
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log("📊 Dashboard mounted");
+    
+    // Check authentication
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.log("🔐 No token found, redirecting to login");
+      navigate("/login");
+      return;
+    }
+
     // Get user name from localStorage
     const savedName = localStorage.getItem("userName");
     if (savedName) {
       setUserName(savedName);
     } else {
-      setUserName("User"); // Default name
+      const hasVisited = localStorage.getItem("hasVisited");
+      if (!hasVisited) {
+        setShowIntro(true);
+        setLoading(false);
+        return;
+      } else {
+        setUserName("User");
+      }
     }
 
-    // Check if first time user (intro screen)
-    const hasVisited = localStorage.getItem("hasVisited");
-    if (!hasVisited && !savedName) {
-      setShowIntro(true);
-    }
-    
-    // Load pinned notes
-    const savedPinned = localStorage.getItem("pinnedNotes");
-    if (savedPinned) {
-      setPinnedNotes(JSON.parse(savedPinned));
-    }
-    
-    load();
-  }, []);
+    loadNotes();
+  }, [navigate]);
 
-  const load = async () => {
+  const loadNotes = async () => {
+    setLoading(true);
     try {
+      console.log("📥 Fetching notes...");
       const res = await getNotes();
-      setNotes(res.data);
+      console.log("📥 Notes API response:", res);
+      
+      // Handle different response structures
+      let notesData = [];
+      
+      if (res.data) {
+        if (Array.isArray(res.data)) {
+          notesData = res.data;
+        } else if (Array.isArray(res.data.notes)) {
+          notesData = res.data.notes;
+        } else if (res.data.data && Array.isArray(res.data.data)) {
+          notesData = res.data.data;
+        }
+      }
+      
+      console.log("📥 Processed notes:", notesData);
+      setNotes(notesData);
+      
     } catch (error) {
-      console.error("Error loading notes:", error);
+      console.error("❌ Error loading notes:", error);
+      // Set empty array on error
+      setNotes([]);
+      
+      // If unauthorized, redirect to login
+      if (error.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -52,42 +86,60 @@ export default function Dashboard() {
     localStorage.setItem("userName", name);
     localStorage.setItem("hasVisited", "true");
     setShowIntro(false);
+    loadNotes();
   };
 
-  const togglePin = (noteId) => {
-    let newPinned;
-    if (pinnedNotes.includes(noteId)) {
-      newPinned = pinnedNotes.filter(id => id !== noteId);
-    } else {
-      newPinned = [...pinnedNotes, noteId];
+  const togglePin = async (noteId) => {
+    try {
+      const note = notes.find(n => n.id === noteId);
+      if (note?.is_pinned) {
+        await unpinNote(noteId);
+      } else {
+        await pinNote(noteId);
+      }
+      loadNotes(); // Refresh notes
+    } catch (error) {
+      console.error("❌ Error toggling pin:", error);
     }
-    setPinnedNotes(newPinned);
-    localStorage.setItem("pinnedNotes", JSON.stringify(newPinned));
   };
 
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this note?")) {
       try {
         await deleteNote(id);
-        setPinnedNotes(pinnedNotes.filter(noteId => noteId !== id));
-        load();
+        loadNotes(); // Refresh notes
       } catch (error) {
-        console.error("Error deleting note:", error);
+        console.error("❌ Error deleting note:", error);
       }
     }
   };
 
-  const filtered = notes.filter(
-    (n) =>
-      n.title.toLowerCase().includes(search.toLowerCase()) ||
-      n.content?.toLowerCase().includes(search.toLowerCase())
-  );
+  // Safe filtering
+  const filtered = Array.isArray(notes) 
+    ? notes.filter((n) => {
+        if (!n) return false;
+        const titleMatch = n.title?.toLowerCase().includes(search.toLowerCase()) || false;
+        const contentMatch = n.content?.toLowerCase().includes(search.toLowerCase()) || false;
+        return titleMatch || contentMatch;
+      })
+    : [];
 
-  const pinned = filtered.filter(n => pinnedNotes.includes(n.id));
-  const unpinned = filtered.filter(n => !pinnedNotes.includes(n.id));
+  const pinned = filtered.filter(n => n?.is_pinned);
+  const unpinned = filtered.filter(n => !n?.is_pinned);
 
   if (showIntro) {
     return <IntroScreen onComplete={handleIntroComplete} />;
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your notes...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -159,7 +211,7 @@ export default function Dashboard() {
         </div>
 
         {/* Empty State */}
-        {notes.length === 0 ? (
+        {!notes || notes.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
             <div className="w-32 h-32 mb-6 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center">
               <svg className="w-16 h-16 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -193,7 +245,7 @@ export default function Dashboard() {
                   : "space-y-3"}>
                   {pinned.map((note, index) => (
                     <NoteCard
-                      key={note.id}
+                      key={note.id || index}
                       note={note}
                       onEdit={(id) => navigate(`/edit/${id}`)}
                       onDelete={handleDelete}
@@ -218,7 +270,7 @@ export default function Dashboard() {
                   : "space-y-3"}>
                   {unpinned.map((note, index) => (
                     <NoteCard
-                      key={note.id}
+                      key={note.id || index}
                       note={note}
                       onEdit={(id) => navigate(`/edit/${id}`)}
                       onDelete={handleDelete}
@@ -233,7 +285,7 @@ export default function Dashboard() {
             )}
 
             {/* No Results */}
-            {filtered.length === 0 && (
+            {filtered.length === 0 && search.length > 0 && (
               <div className="text-center py-12">
                 <p className="text-gray-600">No notes found matching "{search}"</p>
               </div>
@@ -244,33 +296,15 @@ export default function Dashboard() {
 
       <style>{`
         @keyframes fade-in {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
-
         @keyframes slide-up {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-
-        .animate-fade-in {
-          animation: fade-in 0.5s ease-out;
-        }
-
-        .animate-slide-up {
-          animation: slide-up 0.6s ease-out;
-          animation-fill-mode: both;
-        }
+        .animate-fade-in { animation: fade-in 0.5s ease-out; }
+        .animate-slide-up { animation: slide-up 0.6s ease-out; animation-fill-mode: both; }
       `}</style>
     </div>
   );

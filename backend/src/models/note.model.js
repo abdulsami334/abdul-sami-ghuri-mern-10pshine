@@ -16,7 +16,13 @@ export const createNoteModel = (userId, title, content) => {
 export const getNotesModel = (userId) => {
   return new Promise((resolve, reject) => {
     const q =
-      "SELECT * FROM notes WHERE user_id = ? ORDER BY is_pinned DESC, created_at DESC";
+       `
+      SELECT 
+        COUNT(*) as totalNotes,
+        SUM(is_pinned = 1) as pinnedNotes
+      FROM notes
+      WHERE user_id = ?
+      `;
     db.query(q, [userId], (err, result) => {
       if (err) reject(err);
       else resolve(result);

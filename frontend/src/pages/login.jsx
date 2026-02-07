@@ -1,28 +1,71 @@
 import React, { useState } from "react";
 import { loginUser } from "../api/auth";
-import { useNavigate, Link } from "react-router-dom";
-import noteraLogo from "../assets/noteralogo.svg"; // ADD THIS IMPORT
+import { useNavigate, Link, useLocation } from "react-router-dom";
 
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    setError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
+    
+    console.log("Login form submitted:", form);
+    
     try {
-        const res = await loginUser(form);
+      console.log("Calling loginUser API...");
+      const res = await loginUser(form);
+      console.log("Login API response:", res);
       
+      if (res.data && res.data.token) {
         localStorage.setItem("token", res.data.token);
-                console.log("token", res.data.token);
-      navigate("/");
+        console.log("Token saved to localStorage:", res.data.token);
+        
+        // Save user info if available
+        if (res.data.user) {
+          localStorage.setItem("userName", res.data.user.name || "User");
+          localStorage.setItem("userEmail", res.data.user.email || form.email);
+        }
+        
+        // Redirect based on where user came from
+        const from = location.state?.from?.pathname || "/dashboard";
+        console.log("Redirecting to:", from);
+        navigate(from, { replace: true });
+      } else {
+        throw new Error("No token in response");
+      }
+      
     } catch (error) {
-      console.error("Login failed:", error);
+      console.error("Login error details:", {
+        message: error.message,
+        response: error.response,
+        status: error.response?.status
+      });
+      
+      let errorMessage = "Login failed. Please try again.";
+      
+      if (error.response) {
+        if (error.response.status === 401) {
+          errorMessage = "Invalid email or password";
+        } else if (error.response.status === 404) {
+          errorMessage = "User not found";
+        } else if (error.response.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+      } else if (error.request) {
+        errorMessage = "Network error. Please check your connection.";
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -31,8 +74,6 @@ export default function Login() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap');
-
         @keyframes float {
           0%, 100% { transform: translate(0, 0) scale(1); }
           33% { transform: translate(30px, -30px) scale(1.1); }
@@ -49,9 +90,9 @@ export default function Login() {
           to { opacity: 1; }
         }
 
-        @keyframes logoFloat {
-          0%, 100% { transform: translateY(0) scale(1); }
-          50% { transform: translateY(-5px) scale(1.05); }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.8; }
         }
 
         .animate-float { animation: float 20s infinite ease-in-out; }
@@ -60,48 +101,69 @@ export default function Login() {
         .animate-slide-up { animation: slideUp 0.6s ease-out; }
         .animate-fade-in { animation: fadeIn 0.8s ease-out 0.2s backwards; }
         .animate-fade-in-delayed { animation: fadeIn 0.8s ease-out 0.4s backwards; }
-        .animate-logo-float { animation: logoFloat 3s ease-in-out infinite; }
+        .animate-pulse-custom { animation: pulse 3s ease-in-out infinite; }
       `}</style>
 
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-purple-600 p-4 sm:p-6 lg:p-8 relative overflow-hidden font-['Outfit']">
-        {/* Animated background ornaments - Responsive sizes */}
-        <div className="absolute w-48 h-48 sm:w-64 sm:h-64 lg:w-96 lg:h-96 bg-white/10 rounded-full -top-12 -left-12 sm:-top-16 sm:-left-16 lg:-top-20 lg:-left-20 animate-float"></div>
-        <div className="absolute w-36 h-36 sm:w-48 sm:h-48 lg:w-72 lg:h-72 bg-white/10 rounded-full -bottom-12 -right-12 sm:-bottom-16 sm:-right-16 lg:-bottom-16 lg:-right-16 animate-float-delayed"></div>
-        <div className="absolute w-24 h-24 sm:w-32 sm:h-32 lg:w-48 lg:h-48 bg-white/10 rounded-full top-1/2 right-[5%] sm:right-[10%] animate-float-more-delayed"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-4 relative overflow-hidden">
+        {/* Animated background elements */}
+        <div className="absolute w-96 h-96 bg-white/10 rounded-full -top-20 -left-20 animate-float backdrop-blur-3xl"></div>
+        <div className="absolute w-72 h-72 bg-white/10 rounded-full -bottom-16 -right-16 animate-float-delayed backdrop-blur-3xl"></div>
+        <div className="absolute w-48 h-48 bg-white/10 rounded-full top-1/2 right-[10%] animate-float-more-delayed backdrop-blur-3xl"></div>
 
         {/* Main login card */}
-        <div className="bg-white rounded-xl sm:rounded-2xl lg:rounded-3xl p-4 sm:p-6 lg:p-8 w-full max-w-xs sm:max-w-sm md:max-w-md shadow-2xl relative z-10 animate-slide-up">
-          {/* Logo and branding */}
-          <div className="text-center mb-4 sm:mb-6 lg:mb-8 animate-fade-in">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 mx-auto mb-2 sm:mb-3 lg:mb-4 rounded-full flex items-center justify-center shadow-lg animate-logo-float overflow-hidden">
-              {/* <img 
-                src={noteraLogo}
-                alt="Notera Logo"
-                className="w-full h-full object-contain p-3"
-                onError={(e) => {
-                  // Fallback if image fails to load
-                  e.target.style.display = 'none';
-                  e.target.parentElement.innerHTML = '<div class="text-white font-bold text-2xl sm:text-3xl lg:text-4xl">N</div>';
-                }}
-              /> */}
-<img 
-              src={noteraLogo} 
-              alt="Notera Logo" 
-              className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 mx-auto mb-3 sm:mb-4 drop-shadow-lg animate-logo-float object-contain"
-            />
+        <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-8 w-full max-w-md shadow-2xl relative z-10 animate-slide-up">
+          {/* Logo */}
+          <div className="text-center mb-8 animate-fade-in">
+            <div className="w-20 h-20 mx-auto mb-4 flex items-center justify-center animate-pulse-custom">
+              <svg className="w-full h-full drop-shadow-lg" viewBox="0 0 100 100" fill="none">
+                <defs>
+                  <linearGradient id="featherGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style={{stopColor: '#667eea', stopOpacity: 1}} />
+                    <stop offset="100%" style={{stopColor: '#764ba2', stopOpacity: 1}} />
+                  </linearGradient>
+                </defs>
+                <path 
+                  d="M50 10 C30 20, 20 35, 15 50 C15 55, 17 60, 20 63 L25 68 C28 65, 30 60, 32 55 C35 45, 40 35, 50 25 C60 35, 65 45, 68 55 C70 60, 72 65, 75 68 L80 63 C83 60, 85 55, 85 50 C80 35, 70 20, 50 10 Z M50 25 L48 40 L52 40 L50 25 Z M35 55 C33 58, 31 61, 28 64 L30 66 C33 63, 35 60, 37 57 Z M65 55 C67 58, 69 61, 72 64 L70 66 C67 63, 65 60, 63 57 Z M45 30 L42 45 L46 45 L45 30 Z M55 30 L54 45 L58 45 L55 30 Z" 
+                  fill="url(#featherGrad)"
+                />
+              </svg>
             </div>
             
-            <h1 className="font-['DM_Serif_Display'] text-2xl sm:text-3xl lg:text-4xl font-normal text-slate-800 mb-1 sm:mb-2 tracking-tight">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
               Notera
             </h1>
-            <p className="text-slate-500 text-xs sm:text-sm lg:text-base">Welcome back! Continue your journey.</p>
+            <p className="text-gray-600">Welcome back! Sign in to continue.</p>
           </div>
 
+          {/* Success message from signup */}
+          {location.state?.message && (
+            <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-500 rounded-r-lg text-green-700 text-sm animate-fade-in">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span>{location.state.message}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Error message */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-lg text-red-700 text-sm animate-fade-in">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <span>{error}</span>
+              </div>
+            </div>
+          )}
+
           {/* Login form */}
-          <form onSubmit={handleSubmit} className="animate-fade-in-delayed">
-            <div className="mb-3 sm:mb-4 lg:mb-5">
-              <label htmlFor="email" className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1 sm:mb-2">
-                Email
+          <form onSubmit={handleSubmit} className="animate-fade-in-delayed space-y-5">
+            <div>
+              <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
+                Email Address
               </label>
               <input
                 type="email"
@@ -109,14 +171,14 @@ export default function Login() {
                 name="email"
                 value={form.email}
                 onChange={handleChange}
-                placeholder="abc@example.com"
+                placeholder="you@example.com"
                 required
-                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 lg:py-3 text-xs sm:text-sm lg:text-base border-2 border-slate-200 rounded-lg sm:rounded-xl bg-slate-50 transition-all duration-300 focus:outline-none focus:border-blue-500 focus:bg-white focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] focus:-translate-y-0.5 placeholder:text-slate-400"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white/50 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-100 transition-all placeholder:text-gray-400"
               />
             </div>
 
-            <div className="mb-3 sm:mb-4 lg:mb-5">
-              <label htmlFor="password" className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1 sm:mb-2">
+            <div>
+              <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
                 Password
               </label>
               <input
@@ -127,89 +189,60 @@ export default function Login() {
                 onChange={handleChange}
                 placeholder="Enter your password"
                 required
-                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 lg:py-3 text-xs sm:text-sm lg:text-base border-2 border-slate-200 rounded-lg sm:rounded-xl bg-slate-50 transition-all duration-300 focus:outline-none focus:border-blue-500 focus:bg-white focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] focus:-translate-y-0.5 placeholder:text-slate-400"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white/50 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-100 transition-all placeholder:text-gray-400"
               />
             </div>
 
-            <div className="flex flex-col xs:flex-row justify-between items-start xs:items-center gap-2 xs:gap-0 mb-4 sm:mb-5 lg:mb-6 text-xs sm:text-sm">
-              <label className="flex items-center gap-1.5 sm:gap-2 cursor-pointer text-slate-600">
-                <input type="checkbox" className="w-3.5 h-3.5 sm:w-4 sm:h-4 cursor-pointer accent-blue-500" />
-                <span>Remember me</span>
+            <div className="flex items-center justify-between text-sm">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" className="w-4 h-4 rounded cursor-pointer accent-purple-600" />
+                <span className="text-gray-600">Remember me</span>
               </label>
-              <a href="#" className="text-blue-500 font-medium hover:text-blue-600 hover:underline transition-colors text-xs sm:text-sm">
+              <Link
+                to="/forgot-password"
+                className="text-purple-600 font-semibold hover:text-purple-700 transition-colors"
+              >
                 Forgot password?
-              </a>
+              </Link>
             </div>
 
             <button 
               type="submit" 
-              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 lg:py-3 text-xs sm:text-sm lg:text-base font-semibold text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg sm:rounded-xl cursor-pointer transition-all duration-300 shadow-lg shadow-blue-500/30 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-500/40 active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 sm:gap-2"
+              className="w-full px-6 py-4 text-base font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-100 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               disabled={isLoading}
             >
               {isLoading ? (
                 <>
-                  <span className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                  <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
                   Signing in...
                 </>
               ) : (
-                "Sign In"
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                  </svg>
+                  Sign In
+                </>
               )}
             </button>
 
-            <div className="relative text-center my-3 sm:my-4 lg:my-5">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200"></div>
-              </div>
-              <span className="relative bg-white px-3 sm:px-4 text-slate-400 text-xs sm:text-sm font-medium">or</span>
+            <div className="text-center pt-4">
+              <p className="text-gray-600">
+                Don't have an account?{" "}
+                <Link 
+                  to="/signup" 
+                  className="font-semibold text-purple-600 hover:text-purple-700 transition-colors hover:underline"
+                >
+                  Create account
+                </Link>
+              </p>
             </div>
-
-            {/* Continue with Facebook */}
-            {/* <button 
-              type="button" 
-              className="w-full mb-2 px-3 sm:px-4 py-2 sm:py-2.5 lg:py-3 text-xs sm:text-sm lg:text-base font-medium text-white bg-blue-600 rounded-lg sm:rounded-xl cursor-pointer transition-all duration-300 hover:bg-blue-700 hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center gap-2 sm:gap-3"
-            >
-              <svg width="18" height="18" viewBox="0 0 18 18" className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5 fill-white">
-                <path d="M16.5 9.05c0-4.14-3.36-7.5-7.5-7.5S1.5 4.91 1.5 9.05c0 3.74 2.74 6.85 6.34 7.43v-5.26H5.7V9.05h2.14V7.14c0-2.12 1.26-3.29 3.19-3.29.92 0 1.89.16 1.89.16v2.08h-1.06c-1.05 0-1.38.65-1.38 1.32v1.58h2.34l-.38 2.42H9.28v5.26c3.6-.58 6.34-3.69 6.34-7.43z"/>
-              </svg>
-              <span className="hidden xs:inline">Continue with Facebook</span>
-              <span className="xs:hidden">Facebook</span>
-            </button> */}
-
-            {/* Continue with Google */}
-            {/* <button 
-              type="button" 
-              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 lg:py-3 text-xs sm:text-sm lg:text-base font-medium text-slate-700 bg-white border-2 border-slate-200 rounded-lg sm:rounded-xl cursor-pointer transition-all duration-300 hover:border-slate-300 hover:bg-slate-50 hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center gap-2 sm:gap-3"
-            >
-              <svg width="18" height="18" viewBox="0 0 18 18" className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5">
-                <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
-                <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
-                <path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/>
-                <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z"/>
-              </svg>
-              <span className="hidden xs:inline">Continue with Google</span>
-              <span className="xs:hidden">Google</span>
-            </button> */}
-
-            <p className="text-center text-slate-500 text-xs sm:text-sm lg:text-base mt-4 sm:mt-5 lg:mt-6">
-              Don't have an account?{" "}
-              <Link to="/signup" className="text-blue-500 font-semibold hover:text-blue-600 hover:underline transition-colors">
-                Sign up
-              </Link>
-            </p>
           </form>
         </div>
       </div>
     </>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
