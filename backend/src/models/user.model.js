@@ -102,7 +102,7 @@ export const updateProfileModel = (userId, name) => {
 export const getUserById = (id) => {
   return new Promise((resolve, reject) => {
     db.query(
-      "SELECT id, name, email, created_at FROM users WHERE id = ?",
+      "SELECT id, name, email, updated_at  FROM users WHERE id = ?",
       [id],
       (err, result) => {
         if (err) reject(err);

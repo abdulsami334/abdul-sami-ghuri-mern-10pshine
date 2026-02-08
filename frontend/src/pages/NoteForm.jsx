@@ -7,6 +7,7 @@ export default function NoteForm() {
   const isEdit = Boolean(id);
   const navigate = useNavigate();
   const editorRef = useRef(null);
+const [noteId, setNoteId] = useState(id || null);
 
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,25 +36,57 @@ export default function NoteForm() {
     }
   };
 
-  useEffect(() => {
-    if (isEdit) {
-      (async () => {
-        setLoading(true);
-        try {
-          const res = await getNoteById(id);
-          setTitle(res.data.title);
-          if (editorRef.current && res.data.content) {
-            editorRef.current.innerHTML = res.data.content;
-            updateCounts(res.data.content);
-          }
-        } catch (error) {
-          console.error("Error fetching note:", error);
-        } finally {
-          setLoading(false);
+//  useEffect(() => {
+//   if (isEdit) {
+//     (async () => {
+//       setLoading(true);
+//       try {
+//         const res = await getNoteById(id);
+
+//         console.log("NOTE API RESPONSE:", res);
+
+//         const note =
+//           res.data?.note ||
+//           res.data?.data ||
+//           res.data ||
+//           {};
+
+//         setTitle(note.title || "");
+
+//         if (editorRef.current) {
+//           editorRef.current.innerHTML = note.content || "";
+//           updateCounts(note.content || "");
+//         }
+
+//       } catch (error) {
+//         console.error("Error fetching note:", error);
+//       } finally {
+//         setLoading(false);
+//       }
+//     })();
+//   }
+// }, [isEdit, id]);
+
+useEffect(() => {
+  if (isEdit) {
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await getNoteById(id);
+        setTitle(res.data.title);
+        setNoteId(res.data.id);   // ADD
+        if (editorRef.current && res.data.content) {
+          editorRef.current.innerHTML = res.data.content;
+          updateCounts(res.data.content);
         }
-      })();
-    }
-  }, [isEdit, id]);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }
+}, [isEdit, id]);
+
+
 
   const updateCounts = (html) => {
     const tempDiv = document.createElement('div');
@@ -81,39 +114,68 @@ export default function NoteForm() {
       }, 1000);
     }
   };
+const handleAutoSave = async () => {
+  try {
+    const content = editorRef.current.innerHTML;
 
-  const handleAutoSave = async () => {
-    try {
-      await createNote({ 
-        title: title || "Untitled", 
-        content: editorRef.current.innerHTML 
+    // FIRST TIME CREATE
+    if (!noteId) {
+      const res = await createNote({
+        title: title || "Untitled",
+        content
       });
-      setLastSaved(new Date());
-    } catch (error) {
-      console.error("Auto-save failed:", error);
-    }
-  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!title.trim()) {
-      alert("Please enter a title");
-      return;
+      const newId = res.data.id;
+      setNoteId(newId);   // IMPORTANT
+    } 
+    // AFTER CREATE → UPDATE
+    else {
+      await updateNote(noteId, {
+        title: title || "Untitled",
+        content
+      });
     }
-    
-    setLoading(true);
-    try {
-      const content = editorRef.current.innerHTML;
-      if (isEdit) await updateNote(id, { title, content });
-      else await createNote({ title, content });
-      navigate("/dashboard");
-    } catch (error) {
-      console.error("Error saving note:", error);
-      alert("Failed to save note. Please try again.");
-    } finally {
-      setLoading(false);
+
+    setLastSaved(new Date());
+  } catch (error) {
+    console.error("Auto-save failed:", error);
+  }
+};
+
+
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  clearTimeout(autoSaveTimerRef.current);
+
+  if (!title.trim()) {
+    alert("Please enter a title");
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const content = editorRef.current.innerHTML;
+
+    if (noteId) {
+      await updateNote(noteId, { title, content });
+    } else {
+      const res = await createNote({ title, content });
+      setNoteId(res.data.id);
     }
-  };
+
+    navigate("/dashboard");
+  } catch (error) {
+    console.error("Error saving note:", error);
+    alert("Failed to save note. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
+
+
 
   const execCommand = (command, value = null) => {
     document.execCommand(command, false, value);

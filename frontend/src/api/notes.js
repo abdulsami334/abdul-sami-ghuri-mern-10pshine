@@ -93,4 +93,15 @@ export const unpinNote = async (id) => {
   }
 };
 
+// Get notes stats (total + pinned)
+export const getNotesStats = async () => {
+  try {
+    const response = await API.get("/notes/stats");
+    return response;
+  } catch (error) {
+    console.error("Get notes stats API error:", error);
+    throw error;
+  }
+};
+
 export default API;

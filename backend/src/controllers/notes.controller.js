@@ -5,7 +5,8 @@ import {
   updateNoteModel,
   deleteNoteModel,
   pinNoteModel,
-  unpinNoteModel
+  unpinNoteModel,
+  getNotesStatsModel
 } from "../models/note.model.js";
 
 /* CREATE */
@@ -88,5 +89,19 @@ export const unpinNoteController = async (req, res, next) => {
     res.json({ message: "Note unpinned" });
   } catch (err) {
     next(err);
+  }
+};
+
+
+export const getNotesStatsController = async (req, res) => {
+  try {
+    const stats = await getNotesStatsModel(req.user.id);
+
+    res.json({
+      totalNotes: stats.totalNotes || 0,
+      pinnedNotes: stats.pinnedNotes || 0,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
