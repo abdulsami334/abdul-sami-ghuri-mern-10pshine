@@ -4,6 +4,7 @@ import Login from './pages/login';
 import Signup from './pages/signup';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import IntroScreen from './components/introScreen';
 import Dashboard from './pages/dashboard';
 import NoteForm from './pages/NoteForm';
 import Profile from './pages/Profile';
@@ -19,6 +20,16 @@ function App() {
       <Route path="/signup" element={<Signup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      
+      {/* Intro Screen - Protected */}
+      <Route
+        path="/welcome"
+        element={
+          <ProtectedRoute>
+            <IntroScreen />
+          </ProtectedRoute>
+        }
+      />
       
       {/* Protected Routes */}
       <Route

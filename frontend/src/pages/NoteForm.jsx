@@ -7,7 +7,7 @@ export default function NoteForm() {
   const isEdit = Boolean(id);
   const navigate = useNavigate();
   const editorRef = useRef(null);
-const [noteId, setNoteId] = useState(id || null);
+  const [noteId, setNoteId] = useState(id || null);
 
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(false);
@@ -15,15 +15,11 @@ const [noteId, setNoteId] = useState(id || null);
   const [fontFamily, setFontFamily] = useState("Inter");
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
-  const [lastSaved, setLastSaved] = useState(null);
-  const [isTyping, setIsTyping] = useState(false);
   const [activeFormat, setActiveFormat] = useState({
     bold: false,
     italic: false,
     underline: false
   });
-
-  const autoSaveTimerRef = useRef(null);
 
   // Detect active formatting
   const updateActiveFormat = () => {
@@ -36,57 +32,29 @@ const [noteId, setNoteId] = useState(id || null);
     }
   };
 
-//  useEffect(() => {
-//   if (isEdit) {
-//     (async () => {
-//       setLoading(true);
-//       try {
-//         const res = await getNoteById(id);
-
-//         console.log("NOTE API RESPONSE:", res);
-
-//         const note =
-//           res.data?.note ||
-//           res.data?.data ||
-//           res.data ||
-//           {};
-
-//         setTitle(note.title || "");
-
-//         if (editorRef.current) {
-//           editorRef.current.innerHTML = note.content || "";
-//           updateCounts(note.content || "");
-//         }
-
-//       } catch (error) {
-//         console.error("Error fetching note:", error);
-//       } finally {
-//         setLoading(false);
-//       }
-//     })();
-//   }
-// }, [isEdit, id]);
-
-useEffect(() => {
-  if (isEdit) {
-    (async () => {
-      setLoading(true);
-      try {
-        const res = await getNoteById(id);
-        setTitle(res.data.title);
-        setNoteId(res.data.id);   // ADD
-        if (editorRef.current && res.data.content) {
-          editorRef.current.innerHTML = res.data.content;
-          updateCounts(res.data.content);
+  // Load existing note if editing
+  useEffect(() => {
+    if (isEdit) {
+      (async () => {
+        setLoading(true);
+        try {
+          const res = await getNoteById(id);
+          setTitle(res.data.title || "");
+          setNoteId(res.data.id);
+          
+          if (editorRef.current && res.data.content) {
+            editorRef.current.innerHTML = res.data.content;
+            updateCounts(res.data.content);
+          }
+        } catch (error) {
+          console.error("Error fetching note:", error);
+          alert("Failed to load note. Please try again.");
+        } finally {
+          setLoading(false);
         }
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }
-}, [isEdit, id]);
-
-
+      })();
+    }
+  }, [isEdit, id]);
 
   const updateCounts = (html) => {
     const tempDiv = document.createElement('div');
@@ -103,79 +71,53 @@ useEffect(() => {
       const content = editorRef.current.innerHTML;
       updateCounts(content);
       updateActiveFormat();
-      setIsTyping(true);
-      
-      clearTimeout(autoSaveTimerRef.current);
-      autoSaveTimerRef.current = setTimeout(() => {
-        setIsTyping(false);
-        if (!isEdit && title.trim()) {
-          handleAutoSave();
-        }
-      }, 1000);
     }
   };
-const handleAutoSave = async () => {
-  try {
-    const content = editorRef.current.innerHTML;
 
-    // FIRST TIME CREATE
-    if (!noteId) {
-      const res = await createNote({
-        title: title || "Untitled",
-        content
-      });
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-      const newId = res.data.id;
-      setNoteId(newId);   // IMPORTANT
-    } 
-    // AFTER CREATE → UPDATE
-    else {
-      await updateNote(noteId, {
-        title: title || "Untitled",
-        content
-      });
+    if (!title.trim()) {
+      alert("Please enter a title");
+      return;
     }
 
-    setLastSaved(new Date());
-  } catch (error) {
-    console.error("Auto-save failed:", error);
-  }
-};
-
-
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-
-  clearTimeout(autoSaveTimerRef.current);
-
-  if (!title.trim()) {
-    alert("Please enter a title");
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    const content = editorRef.current.innerHTML;
-
-    if (noteId) {
-      await updateNote(noteId, { title, content });
-    } else {
-      const res = await createNote({ title, content });
-      setNoteId(res.data.id);
+    // Prevent multiple submissions
+    if (loading) {
+      console.log("Already saving, please wait...");
+      return;
     }
 
-    navigate("/dashboard");
-  } catch (error) {
-    console.error("Error saving note:", error);
-    alert("Failed to save note. Please try again.");
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
 
+    try {
+      const content = editorRef.current.innerHTML;
 
+      if (noteId) {
+        // Update existing note
+        console.log("Updating note with ID:", noteId);
+        await updateNote(noteId, { title, content });
+      } else {
+        // Create new note
+        console.log("Creating new note");
+        const res = await createNote({ title, content });
+        const newId = res.data?.id || res.data?.note?.id;
+        if (newId) {
+          setNoteId(newId);
+          console.log("New note created with ID:", newId);
+        }
+      }
+
+      console.log("Save successful, navigating to dashboard");
+      navigate("/dashboard");
+      
+    } catch (error) {
+      console.error("Error saving note:", error);
+      alert("Failed to save note. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const execCommand = (command, value = null) => {
     document.execCommand(command, false, value);
@@ -890,23 +832,12 @@ const handleSubmit = async (e) => {
           {/* Status Bar */}
           <div className="mt-6 flex flex-wrap items-center justify-between gap-4 p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 shadow-lg">
             <div className="flex items-center gap-6">
-              <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${isTyping ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></div>
-                <span className="text-sm font-medium text-gray-600">
-                  {isTyping ? 'Typing...' : 'Saved'}
-                </span>
-              </div>
-              
-              <div className="text-sm text-gray-500">
-                {lastSaved ? `Last saved: ${lastSaved.toLocaleTimeString()}` : 'Not saved yet'}
+              <div className="text-sm text-gray-600">
+                <span className="font-semibold text-gray-800">{fontFamily.split(',')[0]}</span> • {fontSize}px
               </div>
             </div>
             
             <div className="flex items-center gap-6">
-              <div className="text-sm text-gray-600">
-                <span className="font-semibold text-gray-800">{fontFamily.split(',')[0]}</span> • {fontSize}px
-              </div>
-              
               <div className="flex items-center gap-4 text-sm text-gray-600">
                 <span className="font-semibold text-gray-800">{wordCount} words</span>
                 <span className="font-semibold text-gray-800">{charCount} chars</span>

@@ -36,10 +36,19 @@ export default function Login() {
           localStorage.setItem("userEmail", res.data.user.email || form.email);
         }
         
-        // Redirect based on where user came from
-        const from = location.state?.from?.pathname || "/dashboard";
-        console.log("Redirecting to:", from);
-        navigate(from, { replace: true });
+        // Check if this is first time login
+        const hasVisited = localStorage.getItem("hasVisited");
+        console.log("Has visited before?", hasVisited);
+        
+        // Navigate based on hasVisited flag
+        if (!hasVisited || hasVisited !== "true") {
+          console.log("First time user - redirecting to /welcome");
+          navigate("/welcome", { replace: true });
+        } else {
+          console.log("Returning user - redirecting to /dashboard");
+          navigate("/dashboard", { replace: true });
+        }
+        
       } else {
         throw new Error("No token in response");
       }
