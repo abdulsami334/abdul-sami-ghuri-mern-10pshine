@@ -9,17 +9,18 @@ import {
   findUserByResetToken,
   updatePassword
 } from "../models/user.model.js";
-
+import logger from "../utils/logger.js";
 import { sendResetEmail } from "../utils/sendEmail.js";
 
 /* ===================== SIGNUP ===================== */
 export const signup = async (req, res, next) => {
   try {
+    logger.info(`Signing up user with email ${req.body.email}`);
     const { name, email, password } = req.body;
 
     const hash = await bcrypt.hash(password, 10);
     await createUser(name, email, hash);
-
+logger.info(`User signed up with email ${req.body.email}`);
     res.status(201).json({ message: "User created" });
   } catch (err) {
     next(err);
@@ -29,6 +30,7 @@ export const signup = async (req, res, next) => {
 /* ===================== LOGIN ===================== */
 export const login = async (req, res, next) => {
   try {
+    logger.info(`Logging in user with email ${req.body.email}`);
     const user = await findUserByEmail(req.body.email);
 
     if (!user) {
@@ -52,6 +54,7 @@ export const login = async (req, res, next) => {
       { expiresIn: "2h" }
     );
 
+    logger.info(`User logged in successfully with email ${req.body.email}`);
     res.status(200).json({ token });
   } catch (err) {
     next(err);
@@ -64,6 +67,7 @@ export const login = async (req, res, next) => {
 
 export const getMyProfile = async (req, res) => {
   try {
+       logger.info(`Fetching profile for user with ID ${req.user.id}`);
     const userId = req.user.id;
 
     const user = await getUserById(userId);
@@ -72,7 +76,7 @@ export const getMyProfile = async (req, res) => {
     }
 
     const stats = await getUserNotesStats(userId);
-
+logger.info(`Profile fetched successfully for user with ID ${req.user.id}`);
     res.json({
       id: user.id,
       name: user.name,
@@ -82,6 +86,7 @@ export const getMyProfile = async (req, res) => {
       pinnedNotes: stats.pinnedNotes
     });
   } catch (err) {
+    logger.error(`Failed to fetch profile for user with ID ${req.user.id}: ${err.message}`);
     res.status(500).json({ message: "Failed to fetch profile" });
   }
 };
@@ -90,6 +95,7 @@ export const getMyProfile = async (req, res) => {
 /* ===================== FORGOT PASSWORD (EMAIL) ===================== */
 export const forgotPassword = async (req, res, next) => {
   try {
+      logger.info(`Initiating password reset for email ${req.body.email}`);
     const { email } = req.body;
 
     if (!email) {
@@ -110,6 +116,7 @@ export const forgotPassword = async (req, res, next) => {
     // 📧 SEND EMAIL
     await sendResetEmail(email, token);
 
+    logger.info(`Password reset email sent to ${email}`);
     res.json({ message: "Password reset email sent" });
   } catch (err) {
     next(err);
@@ -119,6 +126,7 @@ export const forgotPassword = async (req, res, next) => {
 /* ===================== RESET PASSWORD ===================== */
 export const resetPassword = async (req, res, next) => {
   try {
+      logger.info("Resetting password");
     const { token, newPassword } = req.body;
 
     if (!token || !newPassword) {
@@ -133,6 +141,7 @@ export const resetPassword = async (req, res, next) => {
     const hashed = await bcrypt.hash(newPassword, 10);
     await updatePassword(user.id, hashed);
 
+    logger.info(`Password reset successful for user with ID ${user.id}`);
     res.json({ message: "Password reset successful" });
   } catch (err) {
     next(err);
