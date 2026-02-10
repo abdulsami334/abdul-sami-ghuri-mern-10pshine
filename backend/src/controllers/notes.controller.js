@@ -13,15 +13,24 @@ import logger from "../utils/logger.js";
 /* CREATE */
 export const createNote = async (req, res, next) => {
   try {
-     logger.info(`Creating note for user ${req.user.id}`);
+    logger.info(`Creating note for user ${req.user.id}`);
+
     const { title, content } = req.body;
     if (!title || !content) {
       return res.status(400).json({ message: "Title and content required" });
     }
 
-    await createNoteModel(req.user.id, title, content);
-        logger.info("Note created successfully");
-    res.status(201).json({ message: "Note created" });
+    // IMPORTANT: result capture karo
+    const result = await createNoteModel(req.user.id, title, content);
+
+    logger.info("Note created successfully");
+
+    // ID response me bhejo
+    res.status(201).json({
+      message: "Note created",
+      id: result.insertId
+    });
+
   } catch (err) {
     next(err);
   }
@@ -73,16 +82,28 @@ export const updateNote = async (req, res, next) => {
 };
 
 /* DELETE */
+/* DELETE */
 export const deleteNote = async (req, res, next) => {
   try {
-     logger.info(`Deleting note for user ${req.user.id}`);
-    await deleteNoteModel(req.params.id, req.user.id);
-   
+    logger.info(`Deleting note for user ${req.user.id}`);
+
+    const result = await deleteNoteModel(req.params.id, req.user.id);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Note not found" });
+    }
+
     logger.info("Note deleted successfully");
+
+    res.status(200).json({
+      message: "Note deleted successfully"
+    });
+
   } catch (err) {
     next(err);
   }
 };
+
 
 /* PIN */
 export const pinNoteController = async (req, res, next) => {

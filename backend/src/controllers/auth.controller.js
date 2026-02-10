@@ -114,10 +114,10 @@ export const forgotPassword = async (req, res, next) => {
     await setResetToken(email, token, expiry);
 
     // 📧 SEND EMAIL
-    await sendResetEmail(email, token);
+     sendResetEmail(email, token).catch(console.err);
 
     logger.info(`Password reset email sent to ${email}`);
-    res.json({ message: "Password reset email sent" });
+    res.status(200).json({ message: "Password reset email sent" });
   } catch (err) {
     next(err);
   }
@@ -132,8 +132,9 @@ export const resetPassword = async (req, res, next) => {
     if (!token || !newPassword) {
       return res.status(400).json({ message: "Token and password required" });
     }
-
+console.log("TOKEN RECEIVED:", token);
     const user = await findUserByResetToken(token);
+    console.log("USER FOUND:", user);
     if (!user) {
       return res.status(400).json({ message: "Invalid or expired token" });
     }

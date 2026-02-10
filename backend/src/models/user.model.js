@@ -67,8 +67,7 @@ export const findUserByResetToken = (token) => {
     const q = `
       SELECT * FROM users 
       WHERE reset_token = ? 
-      AND reset_token_expiry > NOW()
-    `;
+      AND reset_token_expiry > NOW()`;
     db.query(q, [token], (err, result) => {
       if (err) reject(err);
       else resolve(result[0]);
