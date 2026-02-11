@@ -4,6 +4,7 @@ import Sidebar from "../components/Sidebar";
 import NoteCard from "../components/NoteCard";
 import IntroScreen from "../components/IntroScreen";
 import { getNotes, deleteNote, pinNote, unpinNote } from "../api/notes";
+import { getMyProfile } from "../api/auth";
 
 export default function Dashboard() {
   const [notes, setNotes] = useState([]);
@@ -13,6 +14,7 @@ export default function Dashboard() {
   const [view, setView] = useState("grid");
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  
 
   useEffect(() => {
     console.log("📊 Dashboard mounted");
@@ -29,15 +31,26 @@ export default function Dashboard() {
     const savedName = localStorage.getItem("userName");
     if (savedName) {
       setUserName(savedName);
-    } else {
-      const hasVisited = localStorage.getItem("hasVisited");
-      if (!hasVisited) {
-        setShowIntro(true);
-        setLoading(false);
-        return;
-      } else {
-        setUserName("User");
+    }
+  
+    const loadUser = async () => {
+      try {
+        const res = await getMyProfile();
+        setUserName(res.data.name);
+        localStorage.setItem("userName", res.data.name);
+      } catch (err) {
+        console.log(err);
       }
+    };
+  
+    loadUser();
+
+    // Check if first visit
+    const hasVisited = localStorage.getItem("hasVisited");
+    if (!hasVisited) {
+      setShowIntro(true);
+      setLoading(false);
+      return;
     }
 
     loadNotes();
