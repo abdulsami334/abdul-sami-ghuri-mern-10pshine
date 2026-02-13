@@ -6,33 +6,46 @@ export default function IntroScreen() {
   const [showContent, setShowContent] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Check if user somehow ended up here but already visited
-    const hasVisited = localStorage.getItem("hasVisited");
-    if (hasVisited === "true") {
-      console.log("User already visited, redirecting to dashboard");
-      navigate("/dashboard", { replace: true });
-      return;
-    }
+  //  useEffect(() => {
+  //   // अगर user already welcome dekh chuka hai → direct dashboard
+  //   const hasVisited = localStorage.getItem("hasVisited");
+  //   if (hasVisited === "true") {
+  //     navigate("/dashboard", { replace: true });
+  //     return;
+  //   }
 
-    const timer1 = setTimeout(() => setStep(2), 1000);
-    const timer2 = setTimeout(() => setStep(3), 2000);
-    const timer3 = setTimeout(() => {
-      setStep(4);
-      setShowContent(true);
-    }, 3000);
-    
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
-    };
-  }, [navigate]);
+  //   const timer1 = setTimeout(() => setStep(2), 1000);
+  //   const timer2 = setTimeout(() => setStep(3), 2000);
+  //   const timer3 = setTimeout(() => {
+  //     setStep(4);
+  //     setShowContent(true);
+  //   }, 3000);
+
+  //   return () => {
+  //     clearTimeout(timer1);
+  //     clearTimeout(timer2);
+  //     clearTimeout(timer3);
+  //   };
+  // }, [navigate]);
+
+  useEffect(() => {
+  const timer1 = setTimeout(() => setStep(2), 1000);
+  const timer2 = setTimeout(() => setStep(3), 2000);
+  const timer3 = setTimeout(() => {
+    setStep(4);
+    setShowContent(true);
+  }, 3000);
+
+  return () => {
+    clearTimeout(timer1);
+    clearTimeout(timer2);
+    clearTimeout(timer3);
+  };
+}, []);
+
 
   const handleGetStarted = () => {
-    console.log("Setting hasVisited to true");
     localStorage.setItem("hasVisited", "true");
-    console.log("Navigating to dashboard");
     navigate("/dashboard", { replace: true });
   };
 
@@ -154,7 +167,7 @@ export default function IntroScreen() {
         )}
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes float {
           0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.2; }
           50% { transform: translateY(-30px) rotate(180deg); opacity: 0.5; }

@@ -68,24 +68,26 @@ export default function Signup() {
       const response = await signupUser(form);
       console.log("Signup API response:", response);
       
-      // Store user data in localStorage
+   
       if (response.data?.user) {
-        localStorage.setItem("userName", response.data.user.name);
-        localStorage.setItem("userEmail", response.data.user.email);
-        localStorage.setItem("hasVisited", "true");
-      } else {
-        // Fallback to form data
-        localStorage.setItem("userName", form.name);
-        localStorage.setItem("userEmail", form.email);
-        localStorage.setItem("hasVisited", "true");
-      }
-      
+  localStorage.setItem("userName", response.data.user.name);
+  localStorage.setItem("userEmail", response.data.user.email);
+  localStorage.removeItem("hasVisited");
+} else {
+  localStorage.setItem("userName", form.name);
+  localStorage.setItem("userEmail", form.email);
+  localStorage.removeItem("hasVisited");
+}
+
+     
+
       navigate("/login", { 
         state: { 
           message: "Account created successfully! Please login.",
-          newlyRegistered: true 
+          isNewSignup: true 
         }
-      });
+      }
+    );
     } catch (error) {
       console.error("Signup error details:", {
         message: error.message,
@@ -336,3 +338,6 @@ export default function Signup() {
     </>
   );
 }
+
+
+
