@@ -94,25 +94,7 @@ Note Editor
 
 User Profile
 
-(Screenshots can be added here)
 
-Project Structure
-notera/
-│
-├── backend/
-│   ├── controllers/
-│   ├── routes/
-│   ├── services/
-│   ├── models/
-│   ├── middleware/
-│   └── tests/
-│
-├── frontend/
-│   ├── components/
-│   ├── pages/
-│   └── tests/
-│
-└── README.md
 Installation & Setup
 Backend Setup
 cd backend
@@ -131,3 +113,6 @@ Pull request based code review
 Merge to develop after approval
 
 Stable release merged into main
+
+
+
